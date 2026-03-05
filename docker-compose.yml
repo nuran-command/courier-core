@@ -1,4 +1,4 @@
-version: "3.9"
+# Docker Compose for Courier Core (PostgreSQL + FastAPI)
 
 services:
   # 1. FastAPI Backend (Your Work)
@@ -22,7 +22,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-courier_core}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped

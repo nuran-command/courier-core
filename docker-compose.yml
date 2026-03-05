@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  # 1. FastAPI Backend (Your Work)
+  api:
+    build: .
+    container_name: courier-core-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  # 2. Database (Your Work - Industrial PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: courier-core-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-courier_core}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

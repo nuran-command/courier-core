@@ -10,3 +10,7 @@ pytest==8.4.0
 pytest-asyncio==0.26.0
 # Member 1 Geo Utilities
 requests==2.32.3
+
+# Member 2 (Optimization & Algorithm Lead)
+ortools==9.11.4210
+numpy==2.2.3

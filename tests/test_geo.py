@@ -2,7 +2,10 @@
 tests/test_geo.py — Unit tests for Haversine distance calculation.
 """
 import pytest
-from app.core.geo import haversine, build_distance_matrix
+from app.core.geo import haversine
+from app.core.distances import compute_distance_matrix
+from app.models import Courier, Order
+from datetime import datetime, timezone, timedelta
 
 
 class TestHaversine:
@@ -27,14 +30,13 @@ class TestHaversine:
 
 class TestDistanceMatrix:
     def test_matrix_diagonal_is_zero(self):
-        locs = [(51.128, 71.430), (51.137, 71.445), (51.120, 71.410)]
-        matrix = build_distance_matrix(locs)
-        for i in range(len(locs)):
-            assert matrix[i][i] == 0.0
+        couriers = [Courier(id="c1", lat=51.128, lon=71.430, capacity=10.0)]
+        orders = [Order(id="o1", lat=51.128, lon=71.430, weight=1.0, priority=1, deadline=datetime.now(timezone.utc) + timedelta(hours=1))]
+        matrix = compute_distance_matrix(couriers, orders)
+        assert matrix["c1"]["o1"] == 0.0
 
-    def test_matrix_symmetric(self):
-        locs = [(51.128, 71.430), (51.137, 71.445), (51.120, 71.410)]
-        matrix = build_distance_matrix(locs)
-        for i in range(len(locs)):
-            for j in range(len(locs)):
-                assert matrix[i][j] == pytest.approx(matrix[j][i], rel=1e-9)
+    def test_matrix_correctness(self):
+        couriers = [Courier(id="c1", lat=51.0, lon=71.0, capacity=10.0)]
+        orders = [Order(id="o1", lat=52.0, lon=72.0, weight=1.0, priority=1, deadline=datetime.now(timezone.utc) + timedelta(hours=1))]
+        matrix = compute_distance_matrix(couriers, orders)
+        assert matrix["c1"]["o1"] > 100.0  # Just verifying it computes something non-zero

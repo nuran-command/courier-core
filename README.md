@@ -1,1 +1,1 @@
-# courier-core
+# Jana Courier Smart Engine

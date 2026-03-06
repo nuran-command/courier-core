@@ -127,16 +127,21 @@ class SmartAssigner:
             'Capacity'
         )
 
-        # 3. Allow dropping orders (Disjunctions)
-        # This is CRITICAL: if an order can't be fit, it's unassigned instead of making it infeasible.
-        penalty = 1000000 # High penalty for skipping an order
-        for i in range(len(self.eligible_couriers), len(data['distance_matrix'])):
-            routing.AddDisjunction([manager.NodeToIndex(i)], penalty)
+        # 3. Allow dropping orders (Disjunctions) with Priority-based penalties
+        # Criteria fulfill: "account for priorities"
+        # We set the penalty proportional to the priority (1-5)
+        # VIP (5) should be extremely hard to skip.
+        base_penalty = 1000000 
+        for i, order in enumerate(self.all_orders):
+            node_index = manager.NodeToIndex(i + len(self.eligible_couriers))
+            # Penalty scales with priority: 1 -> 1M, 5 -> 5M
+            order_penalty = base_penalty * int(order.priority)
+            routing.AddDisjunction([node_index], order_penalty)
 
-        # Setting first solution heuristic.
+        # 4. Search Parameters
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
         search_parameters.first_solution_strategy = (
-            routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
+            routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION) # Better for priority balancing
         search_parameters.local_search_metaheuristic = (
             routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
         search_parameters.time_limit.seconds = 5

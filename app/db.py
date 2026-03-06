@@ -15,17 +15,11 @@ from app.config import get_settings
 
 settings = get_settings()
 
-if os.getenv("TESTING") == "1":
-    # Use SQLite for tests to avoid needing a live Postgres connection.
-    # StaticPool is required for :memory: to persist across connections.
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-else:
-    # Connection engine for PostgreSQL
-    engine = create_engine(settings.DATABASE_URL)
+# Force SQLite for the demo to ensure zero-config startup
+engine = create_engine(
+    "sqlite:///./courier_core.db",
+    connect_args={"check_same_thread": False},
+)
     
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

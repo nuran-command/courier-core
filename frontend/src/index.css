@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
+
+  --color-dark-bg: #0a0a0a;
+  --color-dark-card: #141414;
+  --color-dark-border: #1f1f1f;
+  --color-dark-text: #ededed;
+  --color-dark-muted: #a0a0a0;
+
+  --font-inter: "Inter", "system-ui", "sans-serif";
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@layer base {
+  body {
+    @apply bg-dark-bg text-dark-text font-inter antialiased selection:bg-primary-500/30;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background-color: color-mix(in srgb, var(--color-dark-card) 60%, transparent);
+    @apply backdrop-blur-xl border border-dark-border rounded-2xl;
+  }
+
+  .primary-btn {
+    @apply px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-xl transition-all duration-300 font-medium active:scale-95 flex items-center gap-2;
+  }
+
+  .secondary-btn {
+    @apply px-6 py-3 bg-dark-card border border-dark-border hover:bg-dark-border text-dark-text rounded-xl transition-all duration-300 font-medium active:scale-95 flex items-center gap-2;
+  }
+}
+
+/* Custom Leaflet Styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: #111 !important;
+}
+
+.leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.marker-pin {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  background: #c30b0e;
+  position: absolute;
+  transform: rotate(-45deg);
+  left: 50%;
+  top: 50%;
+  margin: -16px 0 0 -16px;
+}
+
+.marker-pin::after {
+  content: '';
+  width: 24px;
+  height: 24px;
+  margin: 4px 0 0 4px;
+  background: #fff;
+  position: absolute;
+  border-radius: 50%;
+}

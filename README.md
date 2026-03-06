@@ -10,6 +10,7 @@ This repository provides the high-performance infrastructure for the **Jana Cour
 - **Industrial Database**: Powered by **PostgreSQL** for persistence and **SQLAlchemy 2.0** for ORM mapping.
 - **SLA Dashboard**: Built-in `/analytics/sla` endpoint to monitor operational productivity and priority service levels.
 - **Architect's Shield**: Secured endpoints using **API Key Authentication** (`X-API-KEY`).
+- **Dual-Engine Persistence**: Optimized for both **SQLite** (instant zero-config demo) and **PostgreSQL** (production-grade capacity).
 - **Resilience**: Smart database retry loops to handle Docker startup warm-up times.
 - **ML-Ready Data**: Captures and logs every assignment with metadata (priorities, deadlines, weights) for future model training.
 

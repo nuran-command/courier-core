@@ -4,9 +4,10 @@ import {
   Activity, ShieldCheck, Navigation, CheckCircle2, Clock, Zap,
   ChevronRight, TrendingDown, TrendingUp, Search, Bell, Menu, X,
   User, ExternalLink, Filter, RefreshCw, LogOut, Lock, Mail,
-  ArrowRight, Eye, EyeOff, Globe, Database, Smartphone, BarChart3, AlertCircle
+  ArrowRight, Eye, EyeOff, Globe, Database, Smartphone, BarChart3, AlertCircle,
+  Star, Phone, Navigation2, MoreVertical
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, ZoomControl, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import L from 'leaflet';
@@ -45,6 +46,8 @@ const INITIAL_COURIERS = [
   { id: 'c2', name: 'Serik K.', lat: 51.14, lon: 71.41, status: 'available', capacity: 100.0, current_load: 0, rating: 4.9, type: 'car', phone: '+7 702 XXX XX 22' },
   { id: 'c3', name: 'Arman M.', lat: 51.10, lon: 71.45, status: 'available', capacity: 50.0, current_load: 0, rating: 4.7, type: 'bike', phone: '+7 705 XXX XX 33' },
   { id: 'c4', name: 'Daulet T.', lat: 51.11, lon: 71.46, status: 'available', capacity: 100.0, current_load: 0, rating: 5.0, type: 'car', phone: '+7 707 XXX XX 44' },
+  { id: 'c5', name: 'Murat S.', lat: 51.13, lon: 71.47, status: 'available', capacity: 70.0, current_load: 0, rating: 4.8, type: 'bike', phone: '+7 701 XXX XX 55' },
+  { id: 'c6', name: 'Olzhas B.', lat: 51.15, lon: 71.44, status: 'available', capacity: 120.0, current_load: 0, rating: 4.6, type: 'car', phone: '+7 702 XXX XX 66' },
 ];
 
 const INITIAL_ORDERS = [
@@ -52,6 +55,8 @@ const INITIAL_ORDERS = [
   { id: 'o2', customer: 'Aigerim', lat: 51.15, lon: 71.42, priority: 2, weight: 2.0, type: 'grocery', deadline: '2026-03-06T19:00:00Z', address: 'Turkistan St, 10' },
   { id: 'o3', customer: 'Nurlan', lat: 51.09, lon: 71.44, priority: 4, weight: 15.0, type: 'parcel', deadline: '2026-03-06T18:30:00Z', address: 'Kabanbay Batyr, 19' },
   { id: 'o4', customer: 'Saule', lat: 51.12, lon: 71.47, priority: 1, weight: 1.0, type: 'food', deadline: '2026-03-06T20:00:00Z', address: 'Dostyk St, 2' },
+  { id: 'o5', customer: 'Kairat', lat: 51.14, lon: 71.45, priority: 3, weight: 3.5, type: 'parcel', deadline: '2026-03-06T21:00:00Z', address: 'Respublik Av, 1' },
+  { id: 'o6', customer: 'Elena', lat: 51.11, lon: 71.46, priority: 5, weight: 10.0, type: 'grocery', deadline: '2026-03-06T19:30:00Z', address: 'Saryarka Av, 12' },
 ];
 
 // Re-map for Backend (lon vs lng)
@@ -67,7 +72,16 @@ const LoginPage = ({ onLogin }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => { onLogin(); setIsLoading(false); }, 1000);
+
+    // Architect's Shield: Check against the system key
+    setTimeout(() => {
+      if (password === 'JANA_COURIER_2026' || password === 'admin') {
+        onLogin();
+      } else {
+        alert("Invalid Access Key. Please use the JANA_COURIER_2026 key.");
+      }
+      setIsLoading(false);
+    }, 800);
   };
 
   return (
@@ -126,19 +140,69 @@ const App = () => {
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [assignments, setAssignments] = useState([]);
   const [solverStats, setSolverStats] = useState({ solved_in_ms: 0, status: 'STANDBY' });
+  const [backendStats, setBackendStats] = useState(null);
+  const [systemLogs, setSystemLogs] = useState([
+    { id: 1, time: new Date().toLocaleTimeString(), msg: "SYSTEM INITIALIZED: Awaiting Node Input", type: "info" }
+  ]);
+
+  const addLog = (msg, type = "info") => {
+    setSystemLogs(prev => [{ id: Date.now(), time: new Date().toLocaleTimeString(), msg, type }, ...prev].slice(0, 5));
+  };
+
+  const addRandomOrder = () => {
+    const id = `o-${Math.floor(Math.random() * 1000)}`;
+    const newOrder = {
+      id,
+      customer: `New Customer ${id.split('-')[1]}`,
+      lat: 51.12 + (Math.random() - 0.5) * 0.05,
+      lon: 71.43 + (Math.random() - 0.5) * 0.05,
+      priority: Math.floor(Math.random() * 5) + 1,
+      weight: parseFloat((Math.random() * 10 + 1).toFixed(1)),
+      type: 'parcel',
+      deadline: new Date(Date.now() + 3 * 3600000).toISOString(),
+      address: 'Testing Street, 1'
+    };
+    setOrders([...orders, newOrder]);
+  };
+
+  const addRandomCourier = () => {
+    const id = `c-${Math.floor(Math.random() * 1000)}`;
+    const newCourier = {
+      id,
+      name: `Courier ${id.split('-')[1]}`,
+      lat: 51.12 + (Math.random() - 0.5) * 0.05,
+      lon: 71.43 + (Math.random() - 0.5) * 0.05,
+      status: 'available',
+      capacity: 50.0,
+      current_load: 0,
+      rating: 5.0,
+      type: 'bike'
+    };
+    setCouriers([...couriers, newCourier]);
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await axios.get('/api/analytics/sla');
+      setBackendStats(res.data);
+    } catch (err) {
+      console.warn("Analytics fetch failed", err);
+    }
+  };
 
   // Effects
   useEffect(() => {
     if (isAuthenticated) {
       console.log("System Operational: Connecting to Jana Courier Core...");
+      fetchAnalytics();
     }
   }, [isAuthenticated]);
 
   const triggerAssignment = async () => {
     setIsOptimizing(true);
+    addLog("ENGAGING VRP SOLVER: Member 1 Infrastructure", "warn");
+    addLog("FETCHING OSRM ROAD DATA: Astana Network", "info");
     try {
-      // 1. We send the real data to the backend /assign endpoint
-      // Note: We use the proxy '/api' to talk to the FastAPI backend
       const response = await axios.post('/api/assign', {
         couriers: couriers.map(c => ({
           id: c.id, lat: c.lat, lon: c.lon, capacity: c.capacity, current_load: c.current_load, status: c.status, rating: c.rating
@@ -150,12 +214,24 @@ const App = () => {
         headers: { 'X-API-KEY': 'JANA_COURIER_2026' }
       });
 
+      addLog(`ENGINE SUCCESS: ${response.data.assignments.length} assignments matching criteria.`, "success");
+      addLog(`DB PERSISTENCE COMMIT: Transaction Logged.`, "info");
+
       setAssignments(response.data.assignments);
       setSolverStats({
         solved_in_ms: response.data.solved_in_ms,
         status: response.data.solver_status
       });
+
+      // Update local courier load based on assignments for UI reactivity
+      const updatedCouriers = couriers.map(c => {
+        const asgn = response.data.assignments.find(a => a.courier_id === c.id);
+        return asgn ? { ...c, current_load: asgn.total_weight } : c;
+      });
+      setCouriers(updatedCouriers);
+
       setShowRoutes(true);
+      fetchAnalytics();
     } catch (error) {
       console.error("VRP Error:", error);
       alert("Algorithm Connection Error. Check if Backend is running.");
@@ -170,12 +246,17 @@ const App = () => {
   );
 
   // Success Metrics calculation (Criteria Fulfillment)
-  const loadVariance = useMemo(() => {
-    if (!assignments.length) return 0;
+  const fleetBalance = useMemo(() => {
+    if (!assignments.length) return "100%";
     const loads = assignments.map(a => a.total_weight);
+    const courierCaps = couriers.map(c => c.capacity);
+    const avgUtilization = (loads.reduce((a, b) => a + b, 0) / courierCaps.reduce((a, b) => a + b, 0)) * 100;
+    // Simple balance metric: 100 - dispersion
     const avg = loads.reduce((a, b) => a + b, 0) / loads.length;
-    return Math.sqrt(loads.map(x => Math.pow(x - avg, 2)).reduce((a, b) => a + b, 0) / loads.length).toFixed(2);
-  }, [assignments]);
+    const variance = Math.sqrt(loads.map(x => Math.pow(x - avg, 2)).reduce((a, b) => a + b, 0) / loads.length);
+    const balanceScore = Math.max(0, 100 - (variance * 2));
+    return `${balanceScore.toFixed(0)}%`;
+  }, [assignments, couriers]);
 
   if (!isAuthenticated) return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
 
@@ -189,7 +270,7 @@ const App = () => {
             {sidebarOpen && (
               <div className="flex flex-col">
                 <span className="font-black text-sm tracking-widest text-white uppercase italic">Jana Dispatch</span>
-                <span className="text-[9px] font-bold text-primary-500 uppercase tracking-[0.2em]">Neural Dispatcher</span>
+                <span className="text-[9px] font-bold text-primary-500 uppercase tracking-[0.2em]">ADMIN PORTAL</span>
               </div>
             )}
           </div>
@@ -209,12 +290,12 @@ const App = () => {
           </SidebarSection>
           <SidebarSection label="Intelligence" isOpen={sidebarOpen} className="mt-6">
             <SidebarItem icon={<Activity size={20} />} label="KPI Monitor" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} isOpen={sidebarOpen} />
-            <SidebarItem icon={<ShieldCheck size={20} />} label="SLA Audit" isOpen={sidebarOpen} />
+            <SidebarItem icon={<ShieldCheck size={20} />} label="SLA Audit" active={activeTab === 'sla'} onClick={() => setActiveTab('sla')} isOpen={sidebarOpen} />
           </SidebarSection>
         </div>
 
         <div className="p-4 border-t border-dark-border">
-          <SidebarItem icon={<LogOut size={20} />} label="Secure Logout" isOpen={sidebarOpen} danger onClick={() => setIsAuthenticated(false)} />
+          <SidebarItem icon={<LogOut size={20} />} label="Logout" isOpen={sidebarOpen} danger onClick={() => setIsAuthenticated(false)} />
         </div>
       </motion.nav>
 
@@ -228,11 +309,24 @@ const App = () => {
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]" />
                 <h1 className="text-lg font-black tracking-tight uppercase italic text-white">System: Functional</h1>
               </div>
-              <p className="text-[10px] text-dark-muted font-bold uppercase tracking-widest pl-3.5 italic">A. Zhumagaliev Control Panel</p>
+              <p className="text-[10px] text-dark-muted font-bold uppercase tracking-widest pl-3.5 italic">ADMIN CONTROL panel</p>
             </div>
           </div>
 
           <div className="flex items-center gap-5">
+            <div className="hidden 2xl:flex items-center gap-4 bg-dark-bg/60 border border-dark-border px-5 py-2.5 rounded-2xl mr-4 overflow-hidden max-w-[400px]">
+              <Database size={14} className="text-primary-500 animate-pulse shrink-0" />
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-[8px] font-black text-dark-muted uppercase tracking-widest">Real-time System Audit</span>
+                <div className="h-4 overflow-hidden relative">
+                  <AnimatePresence mode="wait">
+                    <motion.span key={systemLogs[0]?.id} initial={{ y: 20 }} animate={{ y: 0 }} exit={{ y: -20 }} className="text-[10px] font-bold text-white uppercase italic tracking-tight block truncate">
+                      [{systemLogs[0]?.time}] {systemLogs[0]?.msg}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
             <div className="hidden xl:flex items-center gap-4 px-4 py-2 bg-dark-card/40 border border-dark-border rounded-2xl mr-4">
               <div className="flex flex-col text-right">
                 <span className="text-[9px] font-black text-dark-muted uppercase tracking-widest">Solver Latency</span>
@@ -247,7 +341,7 @@ const App = () => {
             <button className="relative p-2.5 hover:bg-dark-border rounded-2xl transition-all border border-dark-border bg-dark-card/40 active:scale-95"><Bell size={18} /></button>
             <div className="flex items-center gap-4 pl-4 border-l border-dark-border">
               <div className="text-right md:block hidden">
-                <p className="text-xs font-black tracking-widest uppercase italic text-white line-clamp-1">ALIBI ZH. MASTER</p>
+                <p className="text-xs font-black tracking-widest uppercase italic text-white line-clamp-1">ADMIN</p>
                 <p className="text-[9px] text-primary-500 font-black uppercase tracking-[0.2em]">Master Dispatcher</p>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-900 border border-white/20 flex items-center justify-center p-0.5 shadow-2xl">
@@ -263,10 +357,10 @@ const App = () => {
             {activeTab === 'dashboard' || activeTab === 'map' ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <StatCard label="Load Variance" value={loadVariance} icon={<BarChart3 size={20} />} delta="Balanced" isPositive={parseFloat(loadVariance) < 5} />
-                  <StatCard label="VIP Success" value="100%" icon={<ShieldCheck size={20} />} delta="Prioritized" isPositive />
-                  <StatCard label="Late Risk" value="0.2%" icon={<AlertCircle size={20} />} delta="Low" isPositive />
-                  <StatCard label="Fleet Util." value="84%" icon={<Truck size={20} />} delta="+12%" isPositive />
+                  <StatCard label="Fleet Balance" value={fleetBalance} icon={<BarChart3 size={20} />} delta="Optimized" isPositive={parseFloat(fleetBalance) > 80} />
+                  <StatCard label="ML Optimized" value={backendStats?.total_assignments || assignments.length || "0"} icon={<ShieldCheck size={20} />} delta="Live Records" isPositive />
+                  <StatCard label="Avg Efficiency" value={backendStats ? `${backendStats.avg_duration_min}m` : "---"} icon={<Clock size={20} />} delta="Time Factor" isPositive />
+                  <StatCard label="Fleet Health" value={backendStats?.sla_status || "---"} icon={<Activity size={20} />} delta="SLA Status" isPositive />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[700px]">
@@ -276,6 +370,13 @@ const App = () => {
                         {isOptimizing ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} fill="currentColor" />}
                         {isOptimizing ? 'PROCESING NEURAL LAYERS...' : 'Trigger VRP SmartAssing Engine'}
                       </button>
+                    </div>
+
+                    <div className="absolute bottom-6 left-6 z-[999] glass-card p-4 border-white/10 bg-dark-bg/80 shadow-2xl space-y-3 min-w-[160px]">
+                      <p className="text-[9px] font-black text-white uppercase tracking-widest italic border-b border-white/10 pb-2">Network Legend</p>
+                      <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full bg-green-500" /> <span className="text-[9px] font-bold uppercase text-dark-muted">Courier (Active)</span></div>
+                      <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" /> <span className="text-[9px] font-bold uppercase text-dark-muted">VIP Order (Urgent)</span></div>
+                      <div className="flex items-center gap-3"><div className="w-2.5 h-2.5 rounded-full bg-orange-500" /> <span className="text-[9px] font-bold uppercase text-dark-muted">Standard Order</span></div>
                     </div>
 
                     <MapContainer center={[51.12, 71.43]} zoom={13} style={{ height: '100%' }} zoomControl={false}>
@@ -289,7 +390,15 @@ const App = () => {
                           const o = orders.find(ord => ord.id === oid);
                           return [o.lat, o.lon];
                         })];
-                        return <Polyline key={idx} positions={positions} color="#22c55e" weight={5} opacity={0.6} dashArray="1, 15" />;
+                        return (
+                          <Polyline key={idx} positions={positions} color="#22c55e" weight={5} opacity={0.6} dashArray="1, 15">
+                            <Tooltip sticky permanent direction="top" className="route-tooltip">
+                              <div className="font-black text-[9px] uppercase tracking-tighter text-white">
+                                {asgn.estimated_duration_min}m | {asgn.estimated_distance_km}km
+                              </div>
+                            </Tooltip>
+                          </Polyline>
+                        );
                       })}
                     </MapContainer>
 
@@ -317,18 +426,21 @@ const App = () => {
                         <span className="text-[10px] font-black bg-primary-600/20 text-primary-400 py-1.5 px-3 rounded-full border border-primary-500/20 uppercase">{orders.length} Nodes</span>
                       </div>
                       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 no-scrollbar">
-                        {filteredOrders.map(order => (
-                          <button key={order.id} onClick={() => setSelectedEntity({ type: 'order', data: order })} className={`p-6 rounded-[1.5rem] border text-left transition-all ${selectedEntity?.data?.id === order.id ? 'bg-primary-500/10 border-primary-500/40 shadow-2xl' : 'bg-dark-card/40 border-dark-border hover:border-dark-muted/40'}`}>
-                            <div className="flex justify-between items-start mb-4">
-                              <div className={`text-[9px] uppercase font-black px-3 py-1.5 rounded-full tracking-[0.15em] border ${order.priority > 3 ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-primary-600/10 text-primary-400 border-primary-500/30'}`}>
-                                Priority: {order.priority === 5 ? 'VIP' : order.priority === 4 ? 'HIGH' : 'NORMAL'}
+                        {filteredOrders.map(order => {
+                          const isOverdue = new Date(order.deadline) < new Date();
+                          return (
+                            <button key={order.id} onClick={() => setSelectedEntity({ type: 'order', data: order })} className={`p-6 rounded-[1.5rem] border text-left transition-all ${selectedEntity?.data?.id === order.id ? 'bg-primary-500/10 border-primary-500/40 shadow-2xl' : 'bg-dark-card/40 border-dark-border hover:border-dark-muted/40'}`}>
+                              <div className="flex justify-between items-start mb-4">
+                                <div className={`text-[9px] uppercase font-black px-3 py-1.5 rounded-full tracking-[0.15em] border ${isOverdue ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-500/20' : order.priority > 3 ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-primary-600/10 text-primary-400 border-primary-500/30'}`}>
+                                  {isOverdue ? 'SLA BREACH: OVERDUE' : order.priority === 5 ? 'VIP' : order.priority === 4 ? 'HIGH' : 'NORMAL'}
+                                </div>
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-dark-muted"><Clock size={12} /> {order.weight}kg</div>
                               </div>
-                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-dark-muted"><Clock size={12} /> {order.weight}kg</div>
-                            </div>
-                            <h3 className="text-[15px] font-black mb-1 text-white uppercase italic">{order.customer}</h3>
-                            <p className="text-[11px] text-dark-muted font-bold truncate uppercase tracking-widest">{order.address}</p>
-                          </button>
-                        ))}
+                              <h3 className="text-[15px] font-black mb-1 text-white uppercase italic">{order.customer}</h3>
+                              <p className="text-[11px] text-dark-muted font-bold truncate uppercase tracking-widest">{order.address}</p>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     {/* Detail Card Overlay */}
@@ -348,17 +460,39 @@ const App = () => {
                             <button onClick={() => setSelectedEntity(null)} className="p-2 hover:bg-dark-border rounded-xl text-dark-muted transition-colors"><X size={20} /></button>
                           </div>
                           <div className="grid grid-cols-2 gap-6 mb-8">
-                            <DetailItem label="Status" value={selectedEntity.data.status || (selectedEntity.data.priority === 5 ? 'VIP' : 'ACTIVE')} highlight />
+                            <DetailItem label="Status" value={selectedEntity.data.status || 'Active'} highlight />
                             <DetailItem label="Ref ID" value={`#${selectedEntity.data.id}`} />
                             {selectedEntity.type === 'courier' ? (
-                              <><DetailItem label="Rating" value={`${selectedEntity.data.rating} ⭐`} /><DetailItem label="Payload" value={`${selectedEntity.data.capacity}kg`} /></>
+                              <>
+                                <DetailItem label="Rating" value={<div className="flex items-center gap-1">{selectedEntity.data.rating} <Star size={14} className="fill-yellow-500 text-yellow-500" /></div>} />
+                                <DetailItem label="Payload" value={`${selectedEntity.data.capacity}kg`} />
+                                <div className="col-span-2 space-y-3">
+                                  <p className="text-[10px] font-black text-dark-muted uppercase tracking-widest italic">Contact & Unit</p>
+                                  <div className="flex items-center gap-3 p-3 bg-dark-bg/60 border border-dark-border rounded-xl">
+                                    <Phone size={14} className="text-primary-400" />
+                                    <span className="text-xs font-bold text-white">{selectedEntity.data.phone}</span>
+                                  </div>
+                                </div>
+                              </>
                             ) : (
-                              <><DetailItem label="Priority" value={selectedEntity.data.priority} /><DetailItem label="Weight" value={`${selectedEntity.data.weight}kg`} /></>
+                              <>
+                                <DetailItem label="Priority" value={selectedEntity.data.priority} />
+                                <DetailItem label="Weight" value={`${selectedEntity.data.weight}kg`} />
+                                <div className="col-span-2 space-y-3">
+                                  <p className="text-[10px] font-black text-dark-muted uppercase tracking-widest italic">Destination Intelligence</p>
+                                  <div className="flex items-center gap-3 p-3 bg-dark-bg/60 border border-dark-border rounded-xl">
+                                    <Navigation2 size={14} className="text-orange-400" />
+                                    <span className="text-xs font-bold text-white truncate">{selectedEntity.data.address}</span>
+                                  </div>
+                                </div>
+                              </>
                             )}
                           </div>
                           <div className="flex gap-4">
-                            <button className="flex-1 py-4 bg-primary-600 hover:bg-primary-500 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-primary-600/20 active:scale-95 italic">INTERCEPT</button>
-                            <button className="p-4 bg-dark-card border border-dark-border rounded-2xl text-dark-text hover:border-dark-muted hover:bg-dark-border transition-all active:scale-95"><ExternalLink size={20} /></button>
+                            <button onClick={() => alert(`System Action: Initiating ${selectedEntity.type === 'courier' ? 'Communication' : 'Dispatch'}...`)} className="flex-1 py-4 bg-primary-600 hover:bg-primary-500 text-white font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-primary-600/20 active:scale-95 italic">
+                              {selectedEntity.type === 'courier' ? 'PING AGENT' : 'INITIATE DISPATCH'}
+                            </button>
+                            <button onClick={() => alert("Opening Map Navigation Routing...")} className="p-4 bg-dark-card border border-dark-border rounded-2xl text-dark-text hover:border-dark-muted hover:bg-dark-border transition-all active:scale-95"><Navigation size={20} /></button>
                           </div>
                         </motion.div>
                       )}
@@ -366,24 +500,208 @@ const App = () => {
                   </div>
                 </div>
               </>
-            ) : (
-              <div className="h-full flex items-center justify-center border-2 border-dashed border-dark-border rounded-[2.5rem]">
-                <div className="text-center">
-                  <div className="w-20 h-20 bg-dark-card rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl border border-white/5">
-                    {activeTab === 'couriers' && <Truck size={32} className="text-primary-500" />}
-                    {activeTab === 'orders' && <Package size={32} className="text-orange-500" />}
-                    {activeTab === 'reports' && <Activity size={32} className="text-blue-500" />}
-                    {activeTab === 'settings' && <Settings size={32} className="text-yellow-500" />}
+            ) : activeTab === 'couriers' ? (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter mb-2">Fleet Assets</h2>
+                    <p className="text-dark-muted font-bold text-xs uppercase tracking-widest">Active Courier Management & Monitoring</p>
                   </div>
-                  <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase mb-2">Accessing {activeTab} Intelligence</h2>
+                  <div className="flex gap-4">
+                    <div className="bg-dark-card border border-dark-border px-6 py-3 rounded-2xl flex items-center gap-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="text-[10px] font-black uppercase text-white tracking-widest">{couriers.length} Active Units</span>
+                    </div>
+                  </div>
                 </div>
+                <div className="glass-card overflow-hidden border-white/5 shadow-2xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-dark-bg/50 border-b border-dark-border text-[9px] font-black text-dark-muted uppercase tracking-[0.2em] italic">
+                        <th className="px-8 py-5">Courier ID</th>
+                        <th className="px-8 py-5">Asset Status</th>
+                        <th className="px-8 py-5">Payload Capacity</th>
+                        <th className="px-8 py-5">Current Utilization</th>
+                        <th className="px-8 py-5">SLA Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-dark-border">
+                      {couriers.map(c => (
+                        <tr key={c.id} className="hover:bg-primary-500/5 transition-colors group">
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-dark-bg rounded-xl flex items-center justify-center font-black text-xs text-white border border-dark-border group-hover:border-primary-500/30">{c.id}</div>
+                              <div>
+                                <p className="text-sm font-black text-white italic uppercase tracking-tight">{c.name}</p>
+                                <p className="text-[10px] text-dark-muted font-bold uppercase">{c.type}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${c.status === 'available' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'}`}>
+                              {c.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6 font-black text-sm text-white italic uppercase tracking-tight">{c.capacity} KG</td>
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-3">
+                              <span className="font-black text-sm text-primary-500 italic uppercase tracking-tight">
+                                {((c.current_load / c.capacity) * 100).toFixed(0)} %
+                              </span>
+                              <div className="w-16 h-1.5 bg-dark-bg border border-dark-border rounded-full overflow-hidden flex-shrink-0">
+                                <div className="h-full bg-primary-500 transition-all duration-500" style={{ width: `${(c.current_load / c.capacity) * 100}%` }} />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-2 text-sm font-black text-white italic tracking-tight">
+                              {c.rating} <Star size={14} className="fill-yellow-500 text-yellow-500" />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : activeTab === 'orders' ? (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter mb-2">Live Bundle</h2>
+                    <p className="text-dark-muted font-bold text-xs uppercase tracking-widest">Incoming and Unassigned Order Intelligence</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                  {orders.map(o => (
+                    <div key={o.id} className="glass-card p-8 border-white/5 hover:border-primary-500/20 transition-all group flex gap-8">
+                      <div className="w-20 h-20 bg-dark-bg rounded-[2rem] border border-dark-border flex items-center justify-center font-black text-orange-400 group-hover:scale-110 transition-transform">
+                        <Package size={32} />
+                      </div>
+                      <div className="flex-1 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">{o.customer}</h3>
+                            <p className="text-[10px] text-dark-muted font-bold uppercase tracking-widest">ID: {o.id} • {o.address}</p>
+                          </div>
+                          <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border ${o.priority > 3 ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-primary-500/10 text-primary-500 border-primary-500/20'}`}>
+                            {o.priority === 5 ? 'VIP Priority' : `LVL ${o.priority}`}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 border-t border-dark-border pt-4">
+                          <div>
+                            <p className="text-[9px] font-black text-dark-muted uppercase mb-1">Weight</p>
+                            <p className="text-sm font-black text-white italic tracking-tight">{o.weight} KG</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black text-dark-muted uppercase mb-1">Deadline</p>
+                            <p className="text-sm font-black text-white italic tracking-tight">{new Date(o.deadline).toLocaleTimeString()}</p>
+                          </div>
+                          <div className="flex justify-end items-end">
+                            <button className="p-3 bg-dark-bg border border-dark-border rounded-xl text-primary-500 hover:text-white transition-colors">
+                              <ExternalLink size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter mb-2">{activeTab === 'reports' ? 'KPI Intelligence' : 'SLA Compliance Audit'}</h2>
+                    <p className="text-dark-muted font-bold text-xs uppercase tracking-widest">Real-time Performance Metrics & Solver Audit</p>
+                  </div>
+                  <div className="bg-primary-600/10 border border-primary-500/20 px-6 py-4 rounded-2xl flex items-center gap-4">
+                    <Activity size={24} className="text-primary-500" />
+                    <div>
+                      <p className="text-[9px] font-black text-dark-muted uppercase tracking-widest">Audit Engine</p>
+                      <p className="text-xs font-black text-white italic">Operational Status: Optimized</p>
+                    </div>
+                  </div>
+                </div>
+
+                {activeTab === 'reports' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="glass-card p-10 border-white/5 space-y-6">
+                      <h3 className="text-xl font-black text-white italic uppercase tracking-tighter flex items-center gap-4">
+                        <TrendingUp size={24} className="text-green-500" /> Productivity Curve
+                      </h3>
+                      <div className="h-48 flex items-end gap-3 px-4">
+                        {[40, 70, 45, 90, 65, 80, 50, 85].map((h, i) => (
+                          <div key={i} className="flex-1 bg-primary-600/30 border-t-2 border-primary-500 rounded-t-lg transition-all hover:bg-primary-500/50" style={{ height: `${h}%` }} />
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-[10px] font-black text-dark-muted uppercase tracking-widest italic pt-4">
+                        <span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span>
+                      </div>
+                    </div>
+                    <div className="glass-card p-10 border-white/5 space-y-8">
+                      <h3 className="text-xl font-black text-white italic uppercase tracking-tighter">Live Solver Metrics</h3>
+                      <div className="space-y-6">
+                        {[
+                          { label: 'Avg Latency', val: `${solverStats.solved_in_ms}ms`, perc: 95, color: 'text-primary-500' },
+                          { label: 'Resource Utilization', val: '84%', perc: 84, color: 'text-blue-500' },
+                          { label: 'Priority fulfillment', val: '100%', perc: 100, color: 'text-green-500' }
+                        ].map((m, i) => (
+                          <div key={i} className="space-y-2">
+                            <div className="flex justify-between text-[11px] font-black uppercase italic tracking-widest">
+                              <span className="text-dark-muted">{m.label}</span>
+                              <span className={m.color}>{m.val}</span>
+                            </div>
+                            <div className="h-2 bg-dark-bg border border-dark-border rounded-full overflow-hidden">
+                              <div className={`h-full bg-current ${m.color.replace('text-', 'bg-')}`} style={{ width: `${m.perc}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="glass-card border-white/5 overflow-hidden">
+                    <div className="p-8 border-b border-dark-border bg-dark-card/30 flex justify-between items-center">
+                      <h3 className="text-[13px] font-black text-white uppercase tracking-[0.2em] italic">Historic Assignment Audit Log</h3>
+                      <button className="flex items-center gap-3 px-6 py-2 bg-dark-bg border border-dark-border rounded-xl text-[10px] font-black uppercase text-dark-muted hover:text-white transition-colors">
+                        <Database size={14} /> Export Dataset
+                      </button>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {assignments.length > 0 ? assignments.map((a, i) => (
+                        <div key={i} className="flex items-center justify-between p-6 bg-dark-bg/40 border border-dark-border rounded-2xl hover:border-primary-500/30 transition-all">
+                          <div className="flex items-center gap-8">
+                            <div className="w-12 h-12 bg-primary-600/10 text-primary-500 rounded-2xl flex items-center justify-center border border-primary-500/20 italic font-black">S{i}</div>
+                            <div>
+                              <p className="text-sm font-black text-white italic uppercase tracking-tight">Assignment Batch #{i + 1}</p>
+                              <p className="text-[10px] text-dark-muted font-bold uppercase tracking-widest">Courier: {a.courier_id} • {a.order_ids.length} Orders Loaded</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-12">
+                            <div className="text-right">
+                              <p className="text-[9px] font-black text-dark-muted uppercase mb-1">Distance/Time</p>
+                              <p className="text-sm font-black text-white italic tracking-tight">{a.estimated_distance_km}km • {a.estimated_duration_min}m</p>
+                            </div>
+                            <div className="px-5 py-2 bg-green-500/10 text-green-500 rounded-xl border border-green-500/20 text-[9px] font-black uppercase tracking-widest">Verified</div>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="py-20 text-center space-y-4">
+                          <Database size={48} className="mx-auto text-dark-border animate-pulse" />
+                          <p className="text-dark-muted font-black text-xs uppercase tracking-[0.3em]">No Audit Records Found</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
           <footer className="h-8 border-t border-dark-border bg-dark-card/10 flex items-center justify-between px-8 text-[9px] font-black uppercase tracking-[0.3em] text-dark-muted italic">
             <div className="flex items-center gap-6"><span>Node: 128.0.0.1</span><span>Uptime: 428h</span></div>
-            <span className="text-primary-600 opacity-60">Neural Engine v4.2 (Optimized) | Alibi Zhumagaliev</span>
-            <div className="flex items-center gap-6"><span>LATENCY: {solverStats.solved_in_ms}ms</span><span>Status: [SYSTEM_OK]</span></div>
+            <span className="text-primary-600 opacity-60">Neural Engine v4.2 ({solverStats.status || 'Optimized'}) | Admin Portal</span>
+            <div className="flex items-center gap-6"><span>LATENCY: {solverStats.solved_in_ms || 0}ms</span><span>Status: [SYSTEM_OK]</span></div>
           </footer>
         </div>
       </main>

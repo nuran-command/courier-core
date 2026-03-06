@@ -1,0 +1,19 @@
+INFO:     Started server process [97575]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:50193 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50203 - "POST /assign HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50207 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50233 - "POST /assign HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50237 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50286 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50300 - "POST /assign HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50304 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50435 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50439 - "POST /assign HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50443 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50548 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50661 - "GET /analytics/sla HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50665 - "POST /assign HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50669 - "GET /analytics/sla HTTP/1.1" 200 OK

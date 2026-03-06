@@ -1,7 +1,7 @@
 """
-app/core/engine.py — Smart Assignment Engine using OR-Tools (Member 2)
+app/core/engine.py — Advanced Smart Assignment Engine using OR-Tools (Member 2)
 
-Replaces `app/core/assignment.py` greedy logic with mathematical optimization.
+Upgraded from simple assignment to full Vehicle Routing Problem (VRP) optimization.
 """
 from __future__ import annotations
 
@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from typing import List, Dict, Optional
 import numpy as np
 
-from ortools.linear_solver import pywraplp
+from ortools.constraint_solver import routing_enums_pb2
+from ortools.constraint_solver import pywrapcp
 
 from app.models import (
     AssignmentResponse,
@@ -19,13 +20,12 @@ from app.models import (
     Order,
 )
 from app.core.filters import filter_available_couriers
-from app.core.distances import compute_distance_matrix, compute_objective_score
-
+from app.core.distances import compute_distance_matrix, get_distance_km
 
 class SmartAssigner:
     """
-    Core Optimization Engine using Google OR-Tools.
-    Models the problem as a Generalized Assignment Problem (MIP).
+    Advanced Optimization Engine using OR-Tools Routing Model (VRP).
+    Optimizes the delivery sequence for each courier.
     """
 
     def __init__(self, couriers: List[Courier], orders: List[Order], osrm_base_url: str = ""):
@@ -38,161 +38,165 @@ class SmartAssigner:
         self.eligible_couriers, self.rejected_couriers = filter_available_couriers(
             self.all_couriers, self.all_orders
         )
+
+    def compute_data_model(self):
+        """Prepares the distance matrix and constraints for VRP."""
+        # The routing model needs a single distance matrix where index 0 is the 'depot'
+        # or we model each courier as a start node.
+        # For simplicity in this VRP version, we treat each courier's position as a starting point.
         
-        self.solver = pywraplp.Solver.CreateSolver('SCIP')
+        num_couriers = len(self.eligible_couriers)
+        num_orders = len(self.all_orders)
         
-    def prepare_data(self) -> bool:
-        """
-        Precomputes the distance and cost matrices.
-        Returns True if we have valid data to solve, False otherwise.
-        """
-        if not self.eligible_couriers or not self.all_orders:
-            return False
-            
-        # Distance matrix [courier_id][order_id] -> float
-        self.dist_matrix = compute_distance_matrix(
-            self.eligible_couriers, self.all_orders, self.osrm_base_url
-        )
+        # Matrix size: num_couriers (starts) + num_orders
+        total_locations = num_couriers + num_orders
+        distance_matrix = np.zeros((total_locations, total_locations))
         
-        # We need integer indices for OR-Tools
-        self.num_couriers = len(self.eligible_couriers)
-        self.num_orders = len(self.all_orders)
+        # Indices 0 to num_couriers-1 are courier starting positions
+        # Indices num_couriers to total_locations-1 are order locations
         
-        # Cost matrix: cost[i][j] = objective score to assign courier i to order j
-        self.costs = np.zeros((self.num_couriers, self.num_orders))
-        
+        # 1. Fill Distance Matrix
+        # Courier -> Order distances
+        dist_map = compute_distance_matrix(self.eligible_couriers, self.all_orders, self.osrm_base_url)
         for i, c in enumerate(self.eligible_couriers):
             for j, o in enumerate(self.all_orders):
-                dist_km = self.dist_matrix[c.id][o.id]
-                score = compute_objective_score(dist_km, o, current_time=self.now)
-                self.costs[i][j] = score
+                d = dist_map[c.id][o.id]
+                distance_matrix[i][num_couriers + j] = int(d * 1000) # Convert to meters for integer solver
+                distance_matrix[num_couriers + j][i] = int(d * 1000)
                 
-        # Courier capacities and order weights
-        self.courier_capacities = [c.available_capacity for c in self.eligible_couriers]
-        self.order_weights = [o.weight for o in self.all_orders]
-        
-        return True
+        # Order -> Order distances
+        for j1, o1 in enumerate(self.all_orders):
+            for j2, o2 in enumerate(self.all_orders):
+                if j1 == j2: continue
+                d = get_distance_km(o1.lat, o1.lon, o2.lat, o2.lon, self.osrm_base_url)
+                distance_matrix[num_couriers + j1][num_couriers + j2] = int(d * 1000)
 
-    def build_model(self):
-        """
-        Sets up variables, constraints, and the objective function.
-        """
-        # x[i, j] is 1 if courier i is assigned to order j, else 0
-        self.x = {}
-        for i in range(self.num_couriers):
-            for j in range(self.num_orders):
-                self.x[i, j] = self.solver.IntVar(0, 1, f'x_{i}_{j}')
-                
-        # y[j] is 1 if order j is UNASSIGNED, else 0
-        # This allows the solver to drop orders if capacity is exceeded, 
-        # but penalizes doing so heavily.
-        self.y = {}
-        for j in range(self.num_orders):
-            self.y[j] = self.solver.IntVar(0, 1, f'y_{j}')
-
-        # Constraint 1: Each order is assigned to at most 1 courier, OR it is unassigned (y=1)
-        for j in range(self.num_orders):
-            self.solver.Add(sum(self.x[i, j] for i in range(self.num_couriers)) + self.y[j] == 1)
-
-        # Constraint 2: Courier Capacity Constraint
-        for i in range(self.num_couriers):
-            self.solver.Add(
-                sum(self.x[i, j] * self.order_weights[j] for j in range(self.num_orders)) <= self.courier_capacities[i]
-            )
-            
-        # Objective function
-        # Minimize the total cost of assignments PLUS huge penalties for unassigned orders.
-        # Penalty depends on the priority and SLA of the order, effectively ensuring that
-        # VIP and urgent orders are the LAST to be dropped.
-        objective_terms = []
+        # Scale weights to integers
+        demands = [0] * num_couriers + [int(o.weight * 100) for o in self.all_orders]
+        capacities = [int(c.available_capacity * 100) for c in self.eligible_couriers]
         
-        # Sum of standard assignment costs + Load Balancing factor
-        # To balance load, we can add a penalty for assigning an order to a courier 
-        # who already has a high current_load relative to their capacity or simply
-        # penalizing variance. Since this is a linear model, we add a cost 
-        # proportional to the courier's *existing* load or a small baseline penalty
-        # per assignment to spread out orders.
-        # `c.current_load` / `c.capacity` gives the utilization %.
-        
-        for i, c in enumerate(self.eligible_couriers):
-            # Load balancing penalty: The fuller the courier already is, the more it costs to give them another order.
-            # This encourages giving orders to couriers with lower utilization.
-            utilization = c.current_load / c.capacity if c.capacity > 0 else 1.0
-            lb_penalty = 10.0 * utilization  
-            
-            for j in range(self.num_orders):
-                # Total edge cost = Distance_cost + Load_balancing_penalty
-                edge_cost = self.costs[i][j] + lb_penalty
-                objective_terms.append(edge_cost * self.x[i, j])
-                
-        # Unassigned Penalties
-        for j, o in enumerate(self.all_orders):
-            # Calculate a massive penalty for not assigning this order.
-            # Orders with a large Priority_Weight / Time_left should have astronomical drop penalties.
-            penalty = 100000.0 * (compute_objective_score(10.0, o, current_time=self.now))
-            # Just some large multiplier ensuring it prefers any assignment over no assignment.
-            objective_terms.append(penalty * self.y[j])
-            
-        self.solver.Minimize(self.solver.Sum(objective_terms))
-        
-        # Time limit
-        self.solver.set_time_limit(5000) # 5 seconds max
+        return {
+            'distance_matrix': distance_matrix.tolist(),
+            'demands': demands,
+            'vehicle_capacities': capacities,
+            'num_vehicles': num_couriers,
+            'starts': list(range(num_couriers)),
+            'ends': [0] * num_couriers # Routing model needs fixed ends, but we'll use open-ended routes if possible
+        }
 
     def solve(self) -> AssignmentResponse:
         t0 = time.perf_counter()
         
-        if not self.prepare_data():
-            # Nothing to solve (e.g. no couriers available)
-            return self._build_empty_response(t0, "MEMBER2_NO_DATA")
-            
-        self.build_model()
-        
-        status = self.solver.Solve()
-        
-        if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
-            return self._build_results(status, t0)
-        else:
-            return self._build_empty_response(t0, "MEMBER2_INFEASIBLE")
+        if not self.eligible_couriers or not self.all_orders:
+            return self._build_empty_response(t0, "NO_DATA")
 
-    def _build_results(self, status, start_time: float) -> AssignmentResponse:
-        assignments: List[CourierAssignment] = []
-        unassigned_order_ids: List[str] = []
+        data = self.compute_data_model()
         
-        for j in range(self.num_orders):
-            # Check if order j was unassigned
-            if self.y[j].solution_value() > 0.5:
-                unassigned_order_ids.append(self.all_orders[j].id)
-                
-        for i in range(self.num_couriers):
-            assigned_orders = []
-            total_w = 0.0
-            total_dist = 0.0
+        # Create the routing index manager.
+        # num_locations, num_vehicles, starts, ends
+        manager = pywrapcp.RoutingIndexManager(
+            len(data['distance_matrix']),
+            data['num_vehicles'],
+            data['starts'],
+            data['starts'] # Each vehicle 'ends' where it starts for the mathematical model, but we use Disjunctions
+        )
+
+        # Create Routing Model.
+        routing = pywrapcp.RoutingModel(manager)
+
+        # 1. Distance Callback
+        def distance_callback(from_index, to_index):
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return data['distance_matrix'][from_node][to_node]
+
+        transit_callback_index = routing.RegisterTransitCallback(distance_callback)
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+        # 2. Capacity Constraints
+        def demand_callback(from_index):
+            from_node = manager.IndexToNode(from_index)
+            return data['demands'][from_node]
+
+        demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
+        routing.AddDimensionWithVehicleCapacity(
+            demand_callback_index,
+            0,  # null capacity slack
+            data['vehicle_capacities'],  # vehicle maximum capacities
+            True,  # start cumul to zero
+            'Capacity'
+        )
+
+        # 3. Allow dropping orders (Disjunctions)
+        # This is CRITICAL: if an order can't be fit, it's unassigned instead of making it infeasible.
+        penalty = 1000000 # High penalty for skipping an order
+        for i in range(len(self.eligible_couriers), len(data['distance_matrix'])):
+            routing.AddDisjunction([manager.NodeToIndex(i)], penalty)
+
+        # Setting first solution heuristic.
+        search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+        search_parameters.first_solution_strategy = (
+            routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
+        search_parameters.local_search_metaheuristic = (
+            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
+        search_parameters.time_limit.seconds = 5
+
+        # Solve the problem.
+        solution = routing.SolveWithParameters(search_parameters)
+
+        if solution:
+            return self._build_results(manager, routing, solution, data, t0)
+        
+        return self._build_empty_response(t0, "INFEASIBLE")
+
+    def _build_results(self, manager, routing, solution, data, start_time: float) -> AssignmentResponse:
+        assignments: List[CourierAssignment] = []
+        assigned_ids = set()
+        
+        for vehicle_id in range(routing.vehicles()):
+            index = routing.Start(vehicle_id)
+            courier = self.eligible_couriers[vehicle_id]
+            order_ids = []
+            total_dist = 0
+            total_weight = 0
             
-            for j in range(self.num_orders):
-                if self.x[i, j].solution_value() > 0.5:
-                    o = self.all_orders[j]
-                    assigned_orders.append(o.id)
-                    total_w += o.weight
-                    total_dist += self.dist_matrix[self.eligible_couriers[i].id][o.id]
-                    
-            if assigned_orders:
-                assignments.append(CourierAssignment(
-                    courier_id=self.eligible_couriers[i].id,
-                    order_ids=assigned_orders,
-                    total_weight=round(total_w, 3),
-                    estimated_distance_km=round(total_dist, 3)
-                ))
+            # Start is courier position (index 0..num_couriers-1), skip it in assignment list
+            index = solution.Value(routing.NextVar(index))
+            
+            while not routing.IsEnd(index):
+                node_index = manager.IndexToNode(index)
+                order = self.all_orders[node_index - len(self.eligible_couriers)]
+                order_ids.append(order.id)
+                assigned_ids.add(order.id)
                 
+                previous_index = index
+                index = solution.Value(routing.NextVar(index))
+                
+                # node_index - len(self.eligible_couriers) gives the original order index
+                # but we need distance between previous_index and index
+                from_node = manager.IndexToNode(previous_index)
+                to_node = manager.IndexToNode(index)
+                total_dist += data['distance_matrix'][from_node][to_node]
+                total_weight += order.weight
+            
+            if order_ids:
+                assignments.append(CourierAssignment(
+                    courier_id=courier.id,
+                    order_ids=order_ids,
+                    total_weight=round(total_weight, 3),
+                    estimated_distance_km=round(total_dist / 1000.0, 3)
+                ))
+
+        unassigned_ids = [o.id for o in self.all_orders if o.id not in assigned_ids]
         solved_in_ms = round((time.perf_counter() - start_time) * 1000, 2)
-        status_str = "MEMBER2_OPTIMAL" if status == pywraplp.Solver.OPTIMAL else "MEMBER2_FEASIBLE"
         
         return AssignmentResponse(
             assignments=assignments,
-            unassigned_order_ids=unassigned_order_ids + [o.id for o in self.all_orders if o.id in unassigned_order_ids], # In case
-            solver_status=status_str,
-            solved_in_ms=solved_in_ms,
+            unassigned_order_ids=unassigned_ids,
+            solver_status="MEMBER2_VRP_OPTIMAL",
+            solved_in_ms=solved_in_ms
         )
-        
+
     def _build_empty_response(self, start_time: float, status: str) -> AssignmentResponse:
         solved_in_ms = round((time.perf_counter() - start_time) * 1000, 2)
         return AssignmentResponse(

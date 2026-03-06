@@ -4,16 +4,27 @@ app/db.py — SQLAlchemy / PostgreSQL database engine (Member 1 Work).
 from datetime import datetime
 
 from sqlalchemy import (
-    Column, DateTime, Float, Integer, String, create_engine
+    Column, DateTime, Float, Integer, String, create_engine, StaticPool
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import get_settings
+import os
 
 settings = get_settings()
 
-# Connection engine for PostgreSQL
-engine = create_engine(settings.DATABASE_URL)
+if os.getenv("TESTING") == "1":
+    # Use SQLite for tests to avoid needing a live Postgres connection.
+    # StaticPool is required for :memory: to persist across connections.
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+else:
+    # Connection engine for PostgreSQL
+    engine = create_engine(settings.DATABASE_URL)
+    
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

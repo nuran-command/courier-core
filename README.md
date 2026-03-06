@@ -1,4 +1,4 @@
-# 🚀 Jana Courier — Smart Assignment Engine (MVP)
+#  Jana Courier — Smart Assignment Engine (MVP)
 
 > **Challenge**: Optimize logistics to minimize late deliveries, balance fleet load, and ensure high operational efficiency.
 
@@ -6,9 +6,9 @@ This repository contains the **complete implementation** of the Jana Courier pla
 
 ---
 
-## 🏗️ Architectural Overview
+##  Architectural Overview
 
-### ⚙️ Backend (Architect Core)
+###  Backend (Architect Core)
 Designed for **Proprietary Intelligence** and **Operational Reliability**:
 - **Smart Heuristic Solver (Member 1 Proprietary V1)**: Implements Priority-First sorting and **Earliest Deadline First (EDF)** allocation.
 - **Load Balancing**: Advanced logic to prevent courier overload by distributing assignments based on minimal utilization delta.
@@ -17,7 +17,7 @@ Designed for **Proprietary Intelligence** and **Operational Reliability**:
 - **Dual-Engine Persistence**: Production-grade support for **PostgreSQL** with a simplified **SQLite** mode for instant zero-config demos.
 - **Security**: Endpoint hardening via **API Key Authentication** (`X-API-KEY: JANA_COURIER_2026`).
 
-### 🖥️ Frontend (Mission Control)
+###  Frontend (Mission Control)
 A high-end **Command Center** designed for dispatchers:
 - **Real-time Map Intelligence**: Leaflet-powered map with **Pulsing VIP Markers**, interactive route tooltips, and a network legend.
 - **Neural Activity Feed**: A live "System Audit" log showing backend events (OSRM fetches, Solver engaging, DB commits).
@@ -27,7 +27,7 @@ A high-end **Command Center** designed for dispatchers:
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Layer | Technologies |
 |---|---|
@@ -38,7 +38,7 @@ A high-end **Command Center** designed for dispatchers:
 
 ---
 
-## 🚀 Quickstart (Launch Engine)
+##  Quickstart (Launch Engine)
 
 ### 1. Backend Setup
 The recommended way is using **Docker** to handle all dependencies:
@@ -60,7 +60,7 @@ npm run dev
 
 ---
 
-## 📊 Evaluation Criteria Alignment
+##  Evaluation Criteria Alignment
 
 | Criterion | Implementation in Jana Courier |
 |---|---|
@@ -70,7 +70,7 @@ npm run dev
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```
 courier-core/
@@ -89,7 +89,7 @@ courier-core/
 
 ---
 
-## 🧪 Testing Verification
+##  Testing Verification
 Every component is tested for reliability:
 ```bash
 export TESTING=1

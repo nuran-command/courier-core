@@ -24,6 +24,7 @@ def save_assignment_result(
                 courier_id=assignment.courier_id,
                 order_id=order_id,
                 reason_distance_km=assignment.estimated_distance_km,
+                reason_duration_min=assignment.estimated_duration_min,
                 solver_status=response.solver_status,
                 solved_in_ms=response.solved_in_ms,
                 order_priority=int(priority) if priority else None,

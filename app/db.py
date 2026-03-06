@@ -1,6 +1,9 @@
 """
 app/db.py — SQLAlchemy / PostgreSQL database engine (Member 1 Work).
 """
+import os
+import time
+import logging
 from datetime import datetime
 
 from sqlalchemy import (
@@ -9,7 +12,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import get_settings
-import os
 
 settings = get_settings()
 
@@ -50,6 +52,7 @@ class AssignmentLog(Base):
 
     # Why (reasoning fields)
     reason_distance_km = Column(Float, nullable=True)
+    reason_duration_min = Column(Float, nullable=True)  # Time Factor
     solver_status = Column(String(32), nullable=True)
     solved_in_ms = Column(Float, nullable=True)
 
@@ -59,9 +62,21 @@ class AssignmentLog(Base):
 
 
 def create_tables() -> None:
-    """Create all tables. Called on app startup."""
-    # In a real project with PostGIS, you'd use migrations (Alembic).
-    # For a prototype, this ensures Member 1's tables exist.
+    """
+    Create all tables with a retry loop (Member 1 Resilience Upgrade).
+    Ensures the app doesn't crash if the database is still warming up.
+    """
+    retries = 5
+    while retries > 0:
+        try:
+            Base.metadata.create_all(bind=engine)
+            return
+        except Exception as e:
+            retries -= 1
+            logging.error(f"Database not ready. Retrying in 5s... ({retries} left)")
+            time.sleep(5)
+    
+    # Final attempt to crash with a clear error if retries failed
     Base.metadata.create_all(bind=engine)
 
 

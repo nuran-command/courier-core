@@ -76,12 +76,16 @@ def generate_couriers(n: int) -> list[dict[str, Any]]:
     return couriers
 
 
-def post_json(url: str, data: dict) -> dict:
+def post_json(url: str, data: dict, api_key: str = "") -> dict:
     payload = json.dumps(data).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-API-KEY"] = api_key
+
     req = urllib.request.Request(
         url,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
@@ -110,7 +114,7 @@ def print_result(result: dict, n_orders: int, n_couriers: int) -> None:
             f"  [{a['courier_id']}]  "
             f"{len(a['order_ids'])} orders | "
             f"{a['total_weight']:.1f} kg | "
-            f"~{a['estimated_distance_km']:.1f} km"
+            f"~{a['estimated_distance_km']:.1f} km ({a['estimated_duration_min']:.1f} min ETA)"
         )
         for oid in a["order_ids"]:
             print(f"      → {oid}")
@@ -143,10 +147,12 @@ def main():
     endpoint = args.url.rstrip("/") + "/assign"
     print(f"Sending POST {endpoint} …")
 
+    API_KEY = "JANA_COURIER_2026"
+
     try:
-        result = post_json(endpoint, payload)
+        result = post_json(endpoint, payload, api_key=API_KEY)
     except urllib.error.URLError as e:
-        print(f"\n  Could not reach {endpoint}: {e}")
+        print(f"\n❌  Could not reach {endpoint}: {e}")
         print("   Make sure the server is running:  uvicorn app.main:app --reload")
         sys.exit(1)
 
@@ -156,7 +162,8 @@ def main():
     analytics_url = args.url.rstrip("/") + "/analytics/sla"
     print(f"Fetching Analytics from {analytics_url} …")
     try:
-        with urllib.request.urlopen(analytics_url) as resp:
+        req = urllib.request.Request(analytics_url, headers={"X-API-KEY": API_KEY})
+        with urllib.request.urlopen(req) as resp:
             stats = json.loads(resp.read())
             print("\n  SLA & OPERATIONAL ANALYTICS")
             print(f"    Total Successful Assignments: {stats['total_assignments']}")

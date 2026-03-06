@@ -33,13 +33,20 @@ def get_sla_stats(db: Session = Depends(get_db)) -> Dict[str, Any]:
     )
     priority_map = {str(p[0]): p[1] for p in priority_stats if p[0] is not None}
 
-    # Avg solve speed
+    # Solver speed
     avg_speed = db.query(func.avg(AssignmentLog.solved_in_ms)).scalar() or 0.0
+
+    # Travel Metrics
+    avg_dist = db.query(func.avg(AssignmentLog.reason_distance_km)).scalar() or 0.0
+    avg_dur = db.query(func.avg(AssignmentLog.reason_duration_min)).scalar() or 0.0
 
     return {
         "total_assignments": total_count,
         "avg_solver_speed_ms": round(float(avg_speed), 2),
+        "avg_distance_km": round(float(avg_dist), 2),
+        "avg_duration_min": round(float(avg_dur), 2),
         "priority_distribution": priority_map,
         "sla_status": "MONITORING",
-        "ml_ready_records": total_count
+        "ml_ready_records": total_count,
+        "fleet_efficiency_hint": "Optimizing for Time Factor"
     }

@@ -12,12 +12,16 @@ import time
 from datetime import datetime, timezone
 from typing import List
 
+from app.config import get_settings
+from app.core.geo import get_travel_metrics
 from app.models import (
     AssignmentResponse,
     Courier,
     CourierAssignment,
     Order,
 )
+
+settings = get_settings()
 
 
 def solve_assignment(
@@ -58,14 +62,27 @@ def solve_assignment(
             unassigned_order_ids.append(order.id)
 
     # Convert to response models
+    courier_data = {c.id: c for c in couriers}
+    order_data = {o.id: o for o in orders}
+
     for cid, o_ids in courier_map.items():
         if o_ids:
+            # Calculate metrics for the first assigned order as a proxy (simplified for skeleton)
+            first_order = order_data[o_ids[0]]
+            courier = courier_data[cid]
+            dist_km, dur_min = get_travel_metrics(
+                courier.lat, courier.lon,
+                first_order.lat, first_order.lon,
+                settings.OSRM_BASE_URL
+            )
+            
             assignments.append(
                 CourierAssignment(
                     courier_id=cid,
                     order_ids=o_ids,
                     total_weight=round(courier_weights[cid], 3),
-                    estimated_distance_km=0.0, # Distance calculation logic can be added/refined later
+                    estimated_distance_km=round(dist_km, 2),
+                    estimated_duration_min=round(dur_min, 2),
                 )
             )
 

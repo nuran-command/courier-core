@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # OSRM (Member 1 Tool: Road Distances)
     OSRM_BASE_URL: str = "http://router.project-osrm.org"
 
+    # Security (Architect's Shield)
+    API_KEY: str = "JANA_COURIER_2026"
+
 
 @lru_cache
 def get_settings() -> Settings:

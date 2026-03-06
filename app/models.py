@@ -140,6 +140,7 @@ class CourierAssignment(BaseModel):
     order_ids: List[str]
     total_weight: float
     estimated_distance_km: float
+    estimated_duration_min: float = 0.0
 
 
 class AssignmentResponse(BaseModel):

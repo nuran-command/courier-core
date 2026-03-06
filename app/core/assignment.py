@@ -13,11 +13,12 @@ from datetime import datetime, timezone
 from typing import List
 
 from app.config import get_settings
-from app.core.geo import get_travel_metrics
 from app.models import (
     AssignmentResponse,
     Courier,
     CourierAssignment,
+    Order
+)
 from app.core.geo import get_travel_metrics, haversine
 
 def solve_assignment(

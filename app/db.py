@@ -42,6 +42,10 @@ class AssignmentLog(Base):
     solver_status = Column(String(32), nullable=True)
     solved_in_ms = Column(Float, nullable=True)
 
+    # ML & SLA Fields (Member 1 Enhancement)
+    order_priority = Column(Integer, nullable=True)
+    order_deadline = Column(DateTime, nullable=True)
+
 
 def create_tables() -> None:
     """Create all tables. Called on app startup."""

@@ -69,8 +69,8 @@ def assign_orders(
     # 2. Run the solver
     result: AssignmentResponse = solve_assignment(eligible_couriers, body.orders)
 
-    # 3. Persist to DB
-    save_assignment_result(db, result)
+    # 3. Persist to DB (incl. priorities and deadlines for ML)
+    save_assignment_result(db, result, body.orders)
 
     return result
 

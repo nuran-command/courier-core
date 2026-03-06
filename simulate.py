@@ -146,11 +146,26 @@ def main():
     try:
         result = post_json(endpoint, payload)
     except urllib.error.URLError as e:
-        print(f"\n❌  Could not reach {endpoint}: {e}")
+        print(f"\n  Could not reach {endpoint}: {e}")
         print("   Make sure the server is running:  uvicorn app.main:app --reload")
         sys.exit(1)
 
     print_result(result, args.orders, args.couriers)
+
+    # Fetch Analytics
+    analytics_url = args.url.rstrip("/") + "/analytics/sla"
+    print(f"Fetching Analytics from {analytics_url} …")
+    try:
+        with urllib.request.urlopen(analytics_url) as resp:
+            stats = json.loads(resp.read())
+            print("\n  SLA & OPERATIONAL ANALYTICS")
+            print(f"    Total Successful Assignments: {stats['total_assignments']}")
+            print(f"    Avg Solver Speed:             {stats['avg_solver_speed_ms']} ms")
+            print(f"    Priority Dist (SLA Alertness): {stats['priority_distribution']}")
+            print(f"    ML Ready Data Count:         {stats['ml_ready_records']}")
+            print("=" * 60 + "\n")
+    except Exception as e:
+        print(f"Could not fetch analytics: {e}")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import IntEnum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -59,8 +59,8 @@ class Order(BaseModel):
             raise ValueError("weight must be > 0")
         return round(v, 3)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "order-001",
                 "lat": 51.1282,
@@ -70,6 +70,7 @@ class Order(BaseModel):
                 "deadline": "2026-03-05T18:00:00Z",
             }
         }
+    )
 
 
 class Courier(BaseModel):
@@ -100,8 +101,8 @@ class Courier(BaseModel):
     def available_capacity(self) -> float:
         return self.capacity - self.current_load
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "courier-A1",
                 "lat": 51.1300,
@@ -112,6 +113,7 @@ class Courier(BaseModel):
                 "rating": 4.7,
             }
         }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -124,13 +126,14 @@ class AssignmentRequest(BaseModel):
     couriers: List[Courier] = Field(..., min_length=1)
     orders: List[Order] = Field(..., min_length=1)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
-                "couriers": [Courier.Config.json_schema_extra["example"]],
-                "orders": [Order.Config.json_schema_extra["example"]],
+                "couriers": [Courier.model_config["json_schema_extra"]["example"]],
+                "orders": [Order.model_config["json_schema_extra"]["example"]],
             }
         }
+    )
 
 
 class CourierAssignment(BaseModel):

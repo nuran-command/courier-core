@@ -1,83 +1,88 @@
 # Courier Core — Smart Assignment Engine (Member 1: Backend/Architect)
 
 > **Jana Courier Hackathon** | Member 1 Role: Infrastructure, API, and Data Models  
-> Deadline: 10 March 2026
 
-## Overview
+##  Project Vision
+This repository provides the high-performance infrastructure for the **Jana Courier Smart Assignment Engine**. It is designed to minimize late deliveries, maximize fleet utilization, and provide a secure, auditable foundation for Member 2's optimization algorithms.
 
-This project implements the core architecture and infrastructure for the Jana Courier Smart Assignment Engine. As Member 1 (Backend/Architect), this codebase provides:
-
-- **Robust API**: Built with FastAPI, including validation and auto-documentation.
-- **Strict Data Contracts**: Pydantic models for Orders and Couriers.
-- **Persistence**: SQLite (via SQLAlchemy) for logging assignment operations.
-- **Courier Filtering**: Business logic to ensure only available and capable couriers are passed to the assignment logic.
-- **Geo-Utilities**: Haversine distance calculations for location-based logic.
-- **Development Tools**: Simulation scripts, unit/integration tests, and Docker support.
-
-*Note: The complex optimization "Brain" (OR-Tools/VRP) is intended to be implemented by Member 2 in `app/core/assignment.py`.*
+###  Architect's Highlights (Member 1)
+- **Road-Aware Logistics**: Integrated **OSRM** for real-world road network distances and ETA (Travel Duration).
+- **Industrial Database**: Powered by **PostgreSQL** for persistence and **SQLAlchemy 2.0** for ORM mapping.
+- **SLA Dashboard**: Built-in `/analytics/sla` endpoint to monitor operational productivity and priority service levels.
+- **Architect's Shield**: Secured endpoints using **API Key Authentication** (`X-API-KEY`).
+- **Resilience**: Smart database retry loops to handle Docker startup warm-up times.
+- **ML-Ready Data**: Captures and logs every assignment with metadata (priorities, deadlines, weights) for future model training.
 
 ---
 
-## Quickstart (local)
+##  Tech Stack
+- **Framework**: FastAPI (Asynchronous Python)
+- **Validation**: Pydantic V2 (Strict typing)
+- **Database**: PostgreSQL 15 + SQLAlchemy
+- **Containerization**: Docker & Docker Compose
+- **Geo-Routing**: OSRM (Open Source Routing Machine)
+
+---
+
+##  Quickstart (The Fast Way)
+
+The recommended way to run the project is using **Docker**, as it automatically sets up the PostgreSQL database and the API network.
 
 ```bash
-# 1. Create virtual environment
-python3 -m venv venv && source venv/bin/activate
+# 1. Build and start everything
+docker compose up --build -d
 
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Copy env template
-cp .env.example .env   # or edit .env directly
-
-# 4. Start the server
-uvicorn app.main:app --reload
+# 2. Run the simulation script to see the brain in action
+python simulate.py
 ```
 
-Open **http://localhost:8000/docs** for the interactive Swagger UI.
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Analytics**: [http://localhost:8000/analytics/sla](http://localhost:8000/analytics/sla)
+- **API Key**: `JANA_COURIER_2026` (Required for Protected Endpoints)
 
 ---
 
-## Quickstart (Docker)
+##  API Endpoints
 
-```bash
-docker compose up --build
-```
-
----
-
-## API Endpoints
-
-| Method | Path       | Description                              |
-|--------|------------|------------------------------------------|
-| GET    | `/`        | Health check                             |
-| POST   | `/assign`  | Process assignment (Member 1 Filter + Placeholder Solve) |
-| GET    | `/history` | View assignment history log              |
+| Method | Path              | Protected | Description |
+|--------|-------------------|-----------|-------------|
+| GET    | `/`               |  No     | Health Check & Service Info |
+| POST   | `/assign`         |  Yes    | Run Smart Assignment Engine |
+| GET    | `/history`        |  Yes    | Audit Log of Assignment History |
+| GET    | `/analytics/sla`  |  No     | Operational & Efficiency Stats |
 
 ---
 
-## Project Structure (Member 1 Focus)
+##  Project Structure
 
 ```
 courier-core/
 ├── app/
-│   ├── main.py          ← FastAPI entry point
-│   ├── models.py        ← Pydantic: Order, Courier, Request/Response
-│   ├── config.py        ← Settings & Environment
-│   ├── db.py            ← SQLite Database Setup
-│   ├── crud.py          ← Database Operations
 │   ├── api/
-│   │   └── routes.py    ← API Endpoint Definitions
-│   └── core/
-│       ├── geo.py        ← Geographic Math (Haversine)
-│       ├── filters.py    ← Courier Capacity & Status Filtering
-│       └── assignment.py ← Assignment Logic (Skeleton/Placeholder)
-├── tests/
-│   ├── test_models.py
-│   ├── test_geo.py
-│   └── test_assign.py
-├── simulate.py          ← API Stress Test/Simulation
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
+│   │   ├── routes.py       ← Core API Endpoints (Protected)
+│   │   └── analytics.py    ← SLA & Efficiency Analytics
+│   ├── core/
+│   │   ├── geo.py           ← OSRM Road Distance & ETA Logic
+│   │   ├── filters.py       ← Courier Capacity & Status Guards
+│   │   └── assignment.py    ← Bridge for Member 2's Optimization Logic
+│   ├── models.py           ← Strict Data Contracts (Pydantic V2)
+│   ├── db.py               ← PostgreSQL Engine & Resilience Logic
+│   └── crud.py             ← Database Access Layer
+├── tests/                  ← Pytest Suite (Integration & Unit)
+├── simulate.py             ← Full End-to-End Simulation Client
+├── Dockerfile              ← Production-ready image setup
+├── docker-compose.yml      ← Orchestrated Fleet (DB + API)
+└── .env                    ← Environment Configuration
 ```
+
+---
+
+##  Testing
+
+```bash
+# Set environment to testing and run pytest
+export TESTING=1
+pytest
+```
+
+---
